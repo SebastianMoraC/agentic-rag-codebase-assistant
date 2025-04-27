@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  knowledge: &knowledge
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile
+    command: sleep infinity
+    ports:
+      - "8600:8000"
+    volumes:
+      - ../:/app
+      - knowledge_vscode_ssh:/root/.ssh
+      - /Users/sebastian/meetups/rags-examples/python-repositories:/python-repositories
+    env_file:
+      - .env
+    environment:
+      - DOCKER_DEV_ENV=none
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=vectordb
+    networks:
+      - rag-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+  knowledge_code_vscode:
+    <<: *knowledge
+    container_name: knowledge_code_vscode
+    environment:
+      - DOCKER_DEV_ENV=vscode
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=vectordb
+    ports:
+      - "8601:8000"
+      - "5678:5678"
+    networks:
+      - rag-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: knowledge_code_postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=vectordb
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag-network
+
+networks:
+  rag-network:
+    external: true
+
+volumes:
+  postgres_data:
+  knowledge_vscode_ssh:
